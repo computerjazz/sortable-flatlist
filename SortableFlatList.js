@@ -35,7 +35,6 @@ class SortableFlatList extends Component {
         const nextSpacerIndex = this.getSpacerIndex(gestureState, activeRow, additionalOffset)
         
         if (nextSpacerIndex > -1 && nextSpacerIndex !== spacerIndex ) {
-          console.log('NEXT', nextSpacerIndex)
           LayoutAnimation.configureNext(LayoutAnimation.Presets.spring)
           this.setState({ spacerIndex: nextSpacerIndex })
         }
@@ -63,7 +62,6 @@ class SortableFlatList extends Component {
         this.props.onDataSorted(sortedData)
         this._hoverAnim.setValue(0)
         this.setState(state => ({
-          hoverComponent: null,
           activeRow: -1,
           showHoverComponent: false,
           spacerIndex: -1,
@@ -72,7 +70,6 @@ class SortableFlatList extends Component {
     })
 
     this.state = {
-      hoverComponent: null,
       activeRow: -1,
       spacerIndex: -1,
       showHoverComponent: false,
@@ -114,56 +111,36 @@ class SortableFlatList extends Component {
     const { activeRow, spacerIndex, showHoverComponent } = this.state
     const isActiveRow = showHoverComponent && activeRow === index
     const isSpacerRow = showHoverComponent && spacerIndex === index
-    console.log('RENDER')
-
     
     const component = <RowItem
       itemRef={ref => this.measureItem(ref, index)}
       item={item}
       onLongPress={() => {
-        this.setState(state => ({
-          hoverComponent: this._rowClones[index],
-          activeRow: index,
-        }))
+        this.hoverComponent = this._rowClones[index]
+        this.setState({ activeRow: index })
       }}
-
-      style={{
-        height: 30,
-        width: 200,
-        backgroundColor: `rgb(${item.color}, ${item.color}, ${item.color})`
+      style={{ height: 30, width: 200, backgroundColor: `rgb(${item.color}, ${item.color}, ${item.color})`
       }}
     />
 
     this._rowClones[index] = React.cloneElement(component)
+
     return (
       <View>
-
-      {isSpacerRow && (activeRow >= index) && (
-        <View
-          style={{
-            height: this._measurements[activeRow].height, 
-            backgroundColor: 'blue',
-          }}
-        />
-      )}
+        {isSpacerRow && (activeRow >= index) && this.renderSpacer(this._measurements[activeRow].height)}
 
       <View style={{ height: isActiveRow ? 0 : undefined }}>
         {component}
       </View>
 
-        {isSpacerRow && (activeRow < index) && (
-          <View
-            style={{
-              height: this._measurements[activeRow].height,
-              backgroundColor: 'blue',
-            }}
-          />
-        )}
+        {isSpacerRow && (activeRow < index) && this.renderSpacer(this._measurements[activeRow].height)}
        </View>
     )
   }
 
-  renderHoverComponent = (hoverComponent) => {
+  renderSpacer = (height) =>  <View style={{ height }} />
+
+  renderHoverComponent = () => {
     return (
       <Animated.View
         style={{
@@ -171,17 +148,17 @@ class SortableFlatList extends Component {
           top: this._hoverAnim
         }}
       >
-        {hoverComponent}
+        {this.hoverComponent}
       </Animated.View>
     )
   }
 
   render() {
-    const { hoverComponent, showHoverComponent } = this.state
+    const { showHoverComponent } = this.state
     return (
       <View
       ref={ref => {
-        if (ref && !this._container) {
+        if (ref && !this._containerOffset) {
           ref.measure((x, y, width, height, pageX, pageY) => this._containerOffset = pageY)
         }
       }}
@@ -201,7 +178,7 @@ class SortableFlatList extends Component {
           }}
           scrollEventThrottle={16}
         />
-        {showHoverComponent && this.renderHoverComponent(hoverComponent)}
+        {showHoverComponent && this.renderHoverComponent()}
       </View>
     )
   }
