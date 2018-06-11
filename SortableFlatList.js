@@ -48,9 +48,8 @@ class SortableFlatList extends Component {
           this.setState({ spacerIndex: nextSpacerIndex })
 
           // scroll if in top or bottom 10%
-            const yPos = gestureState.moveY - this._containerOffset
-            const shouldScrollUp = yPos < (this._containerHeight * 0.1)
-            const shouldScrollDown = yPos > (this._containerHeight * 0.9)
+            const shouldScrollUp = hoverItemTopPosition < (this._containerHeight * 0.1)
+            const shouldScrollDown = hoverItemTopPosition + this._measurements[activeRow].height > (this._containerHeight * 0.9)
             if (!scroll && shouldScrollUp) this.setState({ scroll: 'up', touchY: gestureState.moveY }, () => this.scroll())
             else if (!scroll && shouldScrollDown) this.setState({ scroll: 'down', touchY: gestureState.moveY }, () => this.scroll())
             else if (scroll && !shouldScrollDown && !shouldScrollUp) this.setState({ scroll: false })
@@ -94,11 +93,11 @@ class SortableFlatList extends Component {
     this._flatList.scrollToOffset({ offset })
 
     const spacerIndex = this.getSpacerIndex(touchY + incrementAmt, activeRow, additionalOffset)
-    if (spacerIndex >= this.props.data.length - 1 || spacerIndex === 0) this.setState({ scroll: false })
+    if (spacerIndex >= this.props.data.length - 1 || spacerIndex <= 0) this.setState({ scroll: false })
     LayoutAnimation.configureNext(LayoutAnimation.Presets.spring)
     this.setState({ spacerIndex })
 
-    setTimeout(() => this.scroll(), 250)
+    setTimeout(() => this.scroll(), 150)
   }
 
   assembleSortedData = (data, activeRow, spacerIndex) => {
@@ -162,7 +161,7 @@ class SortableFlatList extends Component {
         this.setState({ activeRow: index })
       }}
       style={{ 
-        height: 30, 
+        height: 100, 
         width: '100%', 
         backgroundColor: `rgb(${item.color}, ${item.color}, ${item.color})`
       }}
