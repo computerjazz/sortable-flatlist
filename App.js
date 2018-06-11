@@ -16,7 +16,7 @@ import {
 import SortableFlatList from './SortableFlatList'
 
 const initialData = Array.from({ length: 50 }).fill(0).map((d, index) => ({
-  color: `rgba(${Math.floor(Math.random() * 255)}, ${index * 5}, ${132}, ${0.5})`,
+  color: `rgb(${Math.floor(Math.random() * 255)}, ${index * 5}, ${132})`,
   index,
 }))
 
@@ -33,6 +33,8 @@ export default class App extends Component {
         style={[{
           height: 100,
           width: '100%',
+          alignItems: 'center',
+          justifyContent: 'center',
           backgroundColor: item.color,
         }, isActive && {
           elevation: 5,
@@ -44,7 +46,11 @@ export default class App extends Component {
           },
           shadowRadius: 3,
         }]}>
-        <Text>{item.index}</Text>
+        <Text style={{
+          color: 'white',
+          fontWeight: '800',
+          fontSize: 30,
+        }}>{item.index}</Text>
       </TouchableOpacity>
     )
   }

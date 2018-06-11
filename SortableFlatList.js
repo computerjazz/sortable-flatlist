@@ -10,6 +10,25 @@ import {
 
 YellowBox.ignoreWarnings(['Warning: isMounted(...) is deprecated'])
 
+const springConfig = {
+  duration: 500,
+  create: {
+    type: LayoutAnimation.Types.spring,
+    property: LayoutAnimation.Properties.opacity,
+    springDamping: 0.8,
+  },
+  update: {
+    type: LayoutAnimation.Types.spring,
+    property: LayoutAnimation.Properties.opacity,
+    springDamping: 0.8,
+  },
+  delete: {
+    type: LayoutAnimation.Types.spring,
+    property: LayoutAnimation.Properties.opacity,
+    springDamping: 0.8,
+  },
+};
+
 class SortableFlatList extends Component {
   _hoverAnim = new Animated.Value(0)
 
@@ -43,7 +62,7 @@ class SortableFlatList extends Component {
         const nextSpacerIndex = this.getSpacerIndex(gestureState.moveY, activeRow, additionalOffset)
         
         if (nextSpacerIndex > -1 && nextSpacerIndex !== spacerIndex ) {
-          LayoutAnimation.configureNext(LayoutAnimation.Presets.spring)
+          LayoutAnimation.configureNext(springConfig)
           this.setState({ spacerIndex: nextSpacerIndex })
 
           // scroll if in top or bottom 10%
@@ -100,7 +119,7 @@ class SortableFlatList extends Component {
 
     const spacerIndex = this.getSpacerIndex(touchY + incrementAmt, activeRow, additionalOffset)
     if (spacerIndex >= this.props.data.length - 1 || spacerIndex <= 0) this.setState({ scroll: false })
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.spring)
+    LayoutAnimation.configureNext(springConfig)
     this.setState({ spacerIndex })
 
     setTimeout(() => this.scroll(), 150)
