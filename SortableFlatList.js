@@ -1,13 +1,11 @@
-import React, { Component, PureComponent } from 'react'
+import React, { Component } from 'react'
 import { 
   LayoutAnimation, 
   YellowBox, 
   Animated, 
   FlatList, 
   View, 
-  TouchableOpacity, 
   PanResponder, 
-  Text,
 } from 'react-native'
 
 YellowBox.ignoreWarnings(['Warning: isMounted(...) is deprecated'])
@@ -212,7 +210,7 @@ class SortableFlatList extends Component {
         })
       }}}
         {...this._panResponder.panHandlers}
-        style={{ backgroundColor: '#efefef', flex: 1 }}
+        style={{ flex: 1 }}
       >
         <FlatList
           ref={ref => this._flatList = ref}
