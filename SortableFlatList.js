@@ -111,7 +111,7 @@ class SortableFlatList extends Component {
     if (!scroll) return
     const scrollingUp = scroll === 'up'
     const currentScrollOffset = this._scrollOffset
-    const incrementAmt = scrollingUp ? - 30 : 30
+    const incrementAmt = scrollingUp ? - 50 : 50
     const newOffset = currentScrollOffset + incrementAmt
     const offset = scrollingUp ? Math.max(0, newOffset) : newOffset
 
@@ -122,7 +122,7 @@ class SortableFlatList extends Component {
     LayoutAnimation.configureNext(springConfig)
     this.setState({ spacerIndex })
 
-    setTimeout(() => this.scroll(), 150)
+    setTimeout(() => this.scroll(), 200)
   }
 
   assembleSortedData = (data, activeRow, spacerIndex) => {
