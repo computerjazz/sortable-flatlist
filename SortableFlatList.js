@@ -40,8 +40,7 @@ class SortableFlatList extends Component {
         const { activeRow } = this.state 
         const shouldSet = activeRow > -1
         if (shouldSet) {
-          const mouseItemOffset = evt.nativeEvent.locationY
-          const additionalOffset =  mouseItemOffset
+          const additionalOffset = evt.nativeEvent.locationY
           const hoverItemTopPosition = gestureState.moveY - additionalOffset - this._containerOffset 
           
           this._hoverAnim.setValue(hoverItemTopPosition)
@@ -68,9 +67,10 @@ class SortableFlatList extends Component {
           // scroll if in top or bottom 10%
             const shouldScrollUp = hoverItemTopPosition < (this._containerHeight * 0.1)
             const shouldScrollDown = hoverItemTopPosition + this._measurements[activeRow].height > (this._containerHeight * 0.9)
-            if (!scroll && shouldScrollUp) this.setState({ scroll: 'up', touchY: gestureState.moveY }, () => this.scroll())
-            else if (!scroll && shouldScrollDown) this.setState({ scroll: 'down', touchY: gestureState.moveY }, () => this.scroll())
-            else if (scroll && !shouldScrollDown && !shouldScrollUp) this.setState({ scroll: false })
+            
+            if (!scroll && shouldScrollUp) this.setState({ scroll: true, touchY: gestureState.moveY }, () => this.scroll(-50))
+            else if (!scroll && shouldScrollDown) this.setState({ scroll: true, touchY: gestureState.moveY }, () => this.scroll(50))
+            else if (scroll && !shouldScrollDown && !shouldScrollUp) this.setState({ scroll: 0 })
         }
 
         this._hoverAnim.setValue(hoverItemTopPosition)
@@ -85,14 +85,14 @@ class SortableFlatList extends Component {
           data: sortedData,
         })
         this._hoverAnim.setValue(0)
-        this.setState(state => ({
+        this.setState({
           activeRow: -1,
           showHoverComponent: false,
           spacerIndex: -1,
           scroll: false,
           touchY: 0,
           hoverComponent: null,
-        }))
+        })
       }
     })
 
@@ -106,23 +106,23 @@ class SortableFlatList extends Component {
     }
   }
 
-  scroll = () => {
+  scroll = (scrollAmt) => {
     const { scroll, touchY, activeRow, additionalOffset } = this.state
     if (!scroll) return
-    const scrollingUp = scroll === 'up'
+    const scrollingUp = scrollAmt > 0
     const currentScrollOffset = this._scrollOffset
-    const incrementAmt = scrollingUp ? - 50 : 50
-    const newOffset = currentScrollOffset + incrementAmt
+   
+    const newOffset = currentScrollOffset + scrollAmt
     const offset = scrollingUp ? Math.max(0, newOffset) : newOffset
 
     this._flatList.scrollToOffset({ offset })
 
-    const spacerIndex = this.getSpacerIndex(touchY + incrementAmt, activeRow, additionalOffset)
+    const spacerIndex = this.getSpacerIndex(touchY + scrollAmt, activeRow, additionalOffset)
     if (spacerIndex >= this.props.data.length - 1 || spacerIndex <= 0) this.setState({ scroll: false })
     LayoutAnimation.configureNext(springConfig)
     this.setState({ spacerIndex })
 
-    setTimeout(() => this.scroll(), 200)
+    setTimeout(() => this.scroll(scrollAmt), 200)
   }
 
   assembleSortedData = (data, activeRow, spacerIndex) => {
@@ -156,7 +156,6 @@ class SortableFlatList extends Component {
 
   _measurements = []
   _scrollOffset = 0
-  _additionalOffset = 0
 
   measureItem = (ref, index) => {
     if (this._measurements[index]) return
