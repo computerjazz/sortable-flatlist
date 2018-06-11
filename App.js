@@ -10,34 +10,53 @@ import {
   StyleSheet,
   Text,
   View,
+  TouchableOpacity
 } from 'react-native';
-
-const instructions = Platform.select({
-  ios: 'Press Cmd+R to reload,\n' +
-    'Cmd+D or shake for dev menu',
-  android: 'Double tap R on your keyboard to reload,\n' +
-    'Shake or press menu button for dev menu',
-});
 
 import SortableFlatList from './SortableFlatList'
 
-type Props = {};
-export default class App extends Component<Props> {
+const initialData = Array.from({ length: 50 }).fill(0).map((d, index) => ({
+  color: `rgba(${Math.floor(Math.random() * 255)}, ${index * 5}, ${132}, ${0.5})`,
+  index,
+}))
+
+export default class App extends Component {
   state = {
-    data: Array.from({ length: 50 }).fill(0).map((d, i) => ({ 
-      color: `rgb(${i * 5},${i * 5},${i * 5})`,
-      label: `item ${i}`,
-    }))
+    data: initialData,
   }
+
+  renderItem = ({ item, index, itemRef, beginSort, isActive }) => {
+    return (
+      <TouchableOpacity
+        ref={itemRef}
+        onLongPress={beginSort}
+        style={[{
+          height: 100,
+          width: '100%',
+          backgroundColor: item.color,
+        }, isActive && {
+          elevation: 5,
+          shadowColor: 'black',
+          shadowOpacity: 0.4,
+          shadowOffset: {
+            width: 0,
+            height: 3,
+          },
+          shadowRadius: 3,
+        }]}>
+        <Text>{item.index}</Text>
+      </TouchableOpacity>
+    )
+  }
+
   render() {
     return (
       <View style={styles.container}>
         <SortableFlatList
           data={this.state.data}
-          onHoverStart={() => console.log('hover')}
-          onHoverEnd={() => console.log('hover end')}
-          onDataSorted={(data, fromIndex, toIndex) => {
-            console.log('Data', data)
+          renderItem={this.renderItem}
+          onRowActive={(row) => console.log('active!')}
+          onMoveEnd={({ data, from, to, row }) => {
             this.setState({ data })
           }}
         />
@@ -49,8 +68,7 @@ export default class App extends Component<Props> {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 50,
-    marginTop: 20,
+
     backgroundColor: '#F5FCFF',
   },
 });

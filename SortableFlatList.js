@@ -29,7 +29,8 @@ class SortableFlatList extends Component {
           
           this._hoverAnim.setValue(hoverItemTopPosition)
           const spacerIndex = this.getSpacerIndex(gestureState.moveY, activeRow, additionalOffset)
-       
+          this.props.onRowActive && this.props.onRowActive(activeRow)
+
           this.setState({
             additionalOffset,
             spacerIndex,
@@ -60,7 +61,12 @@ class SortableFlatList extends Component {
       onPanResponderRelease: () => {
         const { activeRow, spacerIndex } = this.state
         const sortedData = this.assembleSortedData(this.props.data, activeRow, spacerIndex)
-        this.props.onDataSorted(sortedData)
+        this.props.onMoveEnd && this.props.onMoveEnd({
+          row: this.props.data[activeRow],
+          from: activeRow,
+          to: spacerIndex,
+          data: sortedData,
+        })
         this._hoverAnim.setValue(0)
         this.setState(state => ({
           activeRow: -1,
@@ -68,6 +74,7 @@ class SortableFlatList extends Component {
           spacerIndex: -1,
           scroll: false,
           touchY: 0,
+          hoverComponent: null,
         }))
       }
     })
@@ -78,6 +85,7 @@ class SortableFlatList extends Component {
       showHoverComponent: false,
       scroll: false,
       touchY: 0,
+      hoverComponent: null,
     }
   }
 
@@ -129,7 +137,6 @@ class SortableFlatList extends Component {
     })
   }
 
-  _rowClones = []
   _measurements = []
   _scrollOffset = 0
   _additionalOffset = 0
@@ -152,22 +159,14 @@ class SortableFlatList extends Component {
     const { activeRow, spacerIndex, showHoverComponent } = this.state
     const isActiveRow = showHoverComponent && activeRow === index
     const isSpacerRow = showHoverComponent && spacerIndex === index
-    
-    const component = <RowItem
-      itemRef={ref => this.measureItem(ref, index)}
-      item={item}
-      onLongPress={() => {
-        this.hoverComponent = this._rowClones[index]
-        this.setState({ activeRow: index })
-      }}
-      style={{ 
-        height: 100, 
-        width: '100%', 
-        backgroundColor: `rgb(${item.color}, ${item.color}, ${item.color})`
-      }}
-    />
 
-    this._rowClones[index] = React.cloneElement(component)
+    beginSort = () => {
+      this.setState({ activeRow: index })
+    }
+
+    const itemRef = ref => this.measureItem(ref, index)
+    const component = this.props.renderItem({ item, index, beginSort, itemRef, isActive: isActiveRow })
+    if (isActiveRow && !this.state.hoverComponent) this.setState({ hoverComponent: React.cloneElement(component)})
     return (
       <View>
         {isSpacerRow && (activeRow >= index) && this.renderSpacer(this._measurements[activeRow].height)}
@@ -194,7 +193,7 @@ class SortableFlatList extends Component {
           top: this._hoverAnim,
         }}
       >
-        {this.hoverComponent}
+        {!!this.state.hoverComponent && this.state.hoverComponent}
       </Animated.View>
     )
   }
@@ -235,18 +234,3 @@ class SortableFlatList extends Component {
 }
 
 export default SortableFlatList
-
-class RowItem extends PureComponent {
-  render() {
-    const { itemRef, onLongPress, style, item } = this.props
-    return (
-      <TouchableOpacity
-        ref={itemRef}
-        onLongPress={onLongPress}
-        style={style}
-    >
-        <Text>{item.label}</Text>
-      </TouchableOpacity>
-    )
-  }
-}
