@@ -17,7 +17,8 @@ import SortableFlatList from './SortableFlatList'
 
 const initialData = Array.from({ length: 50 }).fill(0).map((d, index) => ({
   color: `rgb(${Math.floor(Math.random() * 255)}, ${index * 5}, ${132})`,
-  index,
+  label: index,
+  key: `data-key${index}`,
 }))
 
 export default class App extends Component {
@@ -25,11 +26,12 @@ export default class App extends Component {
     data: initialData,
   }
 
-  renderItem = ({ item, index, itemRef, beginSort, isActive }) => {
+  renderItem = ({ item, index, setRef, move, isActive }) => {
     return (
       <TouchableOpacity
-        ref={itemRef}
-        onLongPress={beginSort}
+        key={`myItem-${this.state.data[index].key}`}
+        ref={setRef}
+        onLongPress={move}
         style={[{
           height: 100,
           width: '100%',
@@ -38,6 +40,7 @@ export default class App extends Component {
           backgroundColor: item.color,
         }, isActive && {
           elevation: 5,
+          backgroundColor: 'blue',
           shadowColor: 'black',
           shadowOpacity: 0.4,
           shadowOffset: {
@@ -50,7 +53,7 @@ export default class App extends Component {
           color: 'white',
           fontWeight: '800',
           fontSize: 30,
-        }}>{item.index}</Text>
+        }}>{item.label}</Text>
       </TouchableOpacity>
     )
   }
