@@ -62,7 +62,7 @@ class SortableFlatList extends Component {
       },
       onPanResponderMove: Animated.event([ null, { moveY: this._moveY }], {
         listener: (evt, gestureState) => {
-          const { spacerIndex, activeRow, scroll } = this.state
+          const { activeRow, scroll } = this.state
           const { moveY } = gestureState
           this.setState({ moveY })
           const hoverItemTopPosition = moveY - this.additionalOffset - this._containerOffset
@@ -83,7 +83,7 @@ class SortableFlatList extends Component {
       }),
       onPanResponderRelease: () => {
         const { activeRow, spacerIndex } = this.state
-        const sortedData = this.assembleSortedData(this.props.data, activeRow, spacerIndex)
+        const sortedData = this.getSortedList(this.props.data, activeRow, spacerIndex)
         this.props.onMoveEnd && this.props.onMoveEnd({
           row: this.props.data[activeRow],
           from: activeRow,
@@ -130,14 +130,13 @@ class SortableFlatList extends Component {
     setTimeout(() => this.scroll(scrollAmt), 200)
   }
 
-  assembleSortedData = (data, activeRow, spacerIndex) => {
+  getSortedList = (data, activeRow, spacerIndex) => {
     if (activeRow === spacerIndex) return data
     return data.reduce((acc, cur, i, arr) => {
       if (i === activeRow) return acc
       else if (i === spacerIndex) {
-        const isMovingUp = activeRow > spacerIndex
-        acc.push(isMovingUp ? arr[activeRow] : cur)
-        acc.push(isMovingUp ? cur : arr[activeRow])
+        acc.push(arr[activeRow])
+        acc.push(cur)
       } else acc.push(cur)
       return acc
     }, [])
@@ -167,6 +166,7 @@ class SortableFlatList extends Component {
     return spacerIndex > activeRow ? spacerIndex + 1 : spacerIndex
   }
 
+  _spacerIndex = -1
   _pixels = []
   _measurements = []
   _scrollOffset = 0
