@@ -15,25 +15,6 @@ import {
 YellowBox.ignoreWarnings(['Warning: isMounted(...) is deprecated'])
 UIManager.setLayoutAnimationEnabledExperimental && UIManager.setLayoutAnimationEnabledExperimental(true);
 
-const springConfig = {
-  duration: 500,
-  create: {
-    type: LayoutAnimation.Types.spring,
-    property: LayoutAnimation.Properties.opacity,
-    springDamping: 0.8,
-  },
-  update: {
-    type: LayoutAnimation.Types.spring,
-    property: LayoutAnimation.Properties.opacity,
-    springDamping: 0.8,
-  },
-  delete: {
-    type: LayoutAnimation.Types.spring,
-    property: LayoutAnimation.Properties.opacity,
-    springDamping: 0.8,
-  },
-};
-
 class SortableFlatList extends Component {
   _moveY = new Animated.Value(0)
   _offset = new Animated.Value(0)
@@ -124,9 +105,7 @@ class SortableFlatList extends Component {
 
     const spacerIndex = this.getSpacerIndex(touchY + scrollAmt, activeRow)
     if (spacerIndex >= this.props.data.length - 1 || spacerIndex <= 0) this.setState({ scroll: false })
-    LayoutAnimation.configureNext(springConfig)
     this.setState({ spacerIndex })
-
     setTimeout(() => this.scroll(scrollAmt), 200)
   }
 
@@ -189,10 +168,10 @@ class SortableFlatList extends Component {
 
   _components = {}
 
-  move = (item, hoverComponent) => {
+  move = (hoverComponent, index) => {
     this.setState({
-      activeRow: this.props.data.findIndex(d => d.key === item.key),
-      spacerIndex: this.props.data.findIndex(d => d.key === item.key),
+      activeRow: index,
+      spacerIndex: index,
       hoverComponent,
     })
   }
@@ -203,7 +182,6 @@ class SortableFlatList extends Component {
     const { renderItem } = this.props
     const { activeRow, spacerIndex } = this.state
     const isSpacerRow = spacerIndex === index
-
     const spacerHeight = (isSpacerRow && this._measurements[activeRow]) ? this._measurements[activeRow].height : 0
     
     return (
@@ -263,9 +241,7 @@ class SortableFlatList extends Component {
           windowSize={21}
           keyExtractor={( item ) => item.key}
           initialNumToRender={this.props.data.length}
-          onScroll={e => {
-            this._scrollOffset = e.nativeEvent.contentOffset.y
-          }}
+          onScroll={e => this._scrollOffset = e.nativeEvent.contentOffset.y}
           scrollEventThrottle={16}
         />
         {this.renderHoverComponent()}
@@ -298,7 +274,7 @@ class RowItem extends PureComponent {
   move = () => {
     const { move, renderItem, item, index, setRef } = this.props
     const hoverComponent = renderItem({ isActive: true, item, index, setRef: setRef(index), move: () => null})
-    move(item, hoverComponent)
+    move(hoverComponent, index)
   }
 
   render() {
