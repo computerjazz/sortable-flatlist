@@ -19,9 +19,23 @@ class SortableFlatList extends Component {
   _moveY = new Animated.Value(0)
   _offset = new Animated.Value(0)
   _hoverAnim = Animated.add(this._moveY, this._offset)
+  _spacerIndex = -1
+  _pixels = []
+  _measurements = []
+  _scrollOffset = 0
+  _containerHeight
+  _containerOffset
   
   constructor(props) {
     super(props)
+    const initialState = {
+      activeRow: -1,
+      showHoverComponent: false,
+      spacerIndex: -1,
+      scroll: false,
+      moveY: 0,
+      hoverComponent: null,
+    }
 
     this._panResponder = PanResponder.create({
       onStartShouldSetPanResponderCapture: (evt, gestureState) => {
@@ -31,7 +45,6 @@ class SortableFlatList extends Component {
         return false
       },
       onMoveShouldSetPanResponder: (evt, gestureState) => {
-        
         const { activeRow } = this.state 
         const shouldSet = activeRow > -1
         this._moveY.setValue(gestureState.moveY)
@@ -45,7 +58,12 @@ class SortableFlatList extends Component {
         listener: (evt, gestureState) => {
           const { activeRow, scroll } = this.state
           const { moveY } = gestureState
+
+
           this.setState({ moveY })
+
+
+
           const hoverItemTopPosition = moveY - this.additionalOffset - this._containerOffset
           const nextSpacerIndex = this.getSpacerIndex(moveY, activeRow)
           if (nextSpacerIndex > -1 && nextSpacerIndex !== this._spacerIndex) {
@@ -56,8 +74,8 @@ class SortableFlatList extends Component {
             const shouldScrollDown = hoverItemTopPosition + this._measurements[activeRow].height > (this._containerHeight * 0.9)
 
             if (!scroll) {
-              if (shouldScrollUp) this.setState({ scroll: true, touchY: moveY }, () => this.scroll(-50))
-              if (shouldScrollDown) this.setState({ scroll: true, touchY: moveY }, () => this.scroll(50))
+              if (shouldScrollUp) this.setState({ scroll: true, moveY }, () => this.scroll(-50))
+              if (shouldScrollDown) this.setState({ scroll: true, moveY }, () => this.scroll(50))
             } else if (!shouldScrollDown && !shouldScrollUp) this.setState({ scroll: 0 })
           }
         }
@@ -71,39 +89,25 @@ class SortableFlatList extends Component {
           to: spacerIndex,
           data: sortedData,
         })
-        this.setState({
-          activeRow: -1,
-          showHoverComponent: false,
-          spacerIndex: -1,
-          scroll: false,
-          touchY: 0,
-          hoverComponent: null,
-        })
+        this.setState(initialState)
       }
     })
-
-    this.state = {
-      activeRow: -1,
-      spacerIndex: -1,
-      showHoverComponent: false,
-      scroll: false,
-      touchY: 0,
-      hoverComponent: null,
-    }
+    this.state = initialState
   }
 
   scroll = (scrollAmt) => {
-    const { scroll, touchY, activeRow } = this.state
-    if (!scroll) return
-    const scrollingUp = scrollAmt > 0
+    const { scroll, moveY, activeRow } = this.state
+    const spacerIndex = this.getSpacerIndex(moveY + scrollAmt, activeRow)
+
+    if (!scroll || 
+      spacerIndex >= this.props.data.length - 2) return
+    if (spacerIndex === 0) return this._flatList.scrollToIndex({ index: 0 })
+    const isScrollingUp = scrollAmt > 0
     const currentScrollOffset = this._scrollOffset
    
     const newOffset = currentScrollOffset + scrollAmt
-    const offset = scrollingUp ? Math.max(0, newOffset) : newOffset
-
+    const offset = isScrollingUp ? Math.max(0, newOffset) : newOffset
     this._flatList.scrollToOffset({ offset })
-
-    const spacerIndex = this.getSpacerIndex(touchY + scrollAmt, activeRow)
     if (spacerIndex >= this.props.data.length - 1 || spacerIndex <= 0) this.setState({ scroll: false })
     this.setState({ spacerIndex })
     setTimeout(() => this.scroll(scrollAmt), 200)
@@ -111,7 +115,7 @@ class SortableFlatList extends Component {
 
   getSortedList = (data, activeRow, spacerIndex) => {
     if (activeRow === spacerIndex) return data
-    return data.reduce((acc, cur, i, arr) => {
+    const sortedData = data.reduce((acc, cur, i, arr) => {
       if (i === activeRow) return acc
       else if (i === spacerIndex) {
         acc.push(arr[activeRow])
@@ -119,6 +123,8 @@ class SortableFlatList extends Component {
       } else acc.push(cur)
       return acc
     }, [])
+    if (spacerIndex === data.length) sortedData.push(data[activeRow])
+    return sortedData
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -144,13 +150,6 @@ class SortableFlatList extends Component {
     }
     return spacerIndex > activeRow ? spacerIndex + 1 : spacerIndex
   }
-
-  _spacerIndex = -1
-  _pixels = []
-  _measurements = []
-  _scrollOffset = 0
-  _containerHeight
-  _containerOffset
 
   measureItem = (ref, index) => {
     if (this._measurements[index]) return
@@ -179,11 +178,11 @@ class SortableFlatList extends Component {
   setRef = index => (ref) => this.measureItem(ref, index)
 
   renderItem = ({ item, index }) => {
-    const { renderItem } = this.props
+    const { renderItem, data } = this.props
     const { activeRow, spacerIndex } = this.state
     const isSpacerRow = spacerIndex === index
     const spacerHeight = (isSpacerRow && this._measurements[activeRow]) ? this._measurements[activeRow].height : 0
-    
+    const bottomPadding = index === data.length - 1 && spacerIndex === data.length && this._measurements[activeRow].height
     return (
       <RowItem
         key={`row-${index}`}
@@ -194,6 +193,7 @@ class SortableFlatList extends Component {
         item={item}
         setRef={this.setRef}
         move={this.move}
+        bottomPadding={bottomPadding}
       />
     )
   }
@@ -241,7 +241,7 @@ class SortableFlatList extends Component {
           windowSize={21}
           keyExtractor={( item ) => item.key}
           initialNumToRender={this.props.data.length}
-          onScroll={e => this._scrollOffset = e.nativeEvent.contentOffset.y}
+          onScroll={({ nativeEvent }) => this._scrollOffset = nativeEvent.contentOffset.y}
           scrollEventThrottle={16}
         />
         {this.renderHoverComponent()}
@@ -250,7 +250,7 @@ class SortableFlatList extends Component {
           top: 20,
           left: 0,
           width: 150,
-          height: 150,
+          flex: 1,
           backgroundColor: 'white'
         }}>
           <Text>{`Active: ${this.state.activeRow}`}</Text>
@@ -259,6 +259,9 @@ class SortableFlatList extends Component {
           <Text>{`MoveY: ${this.state.moveY}`}</Text>
           <Text>{`Container height: ${this._containerHeight}`}</Text>
           <Text>{`ContainerOffset: ${this._containerOffset}`}</Text>
+          <Text>{`ScrollOffset: ${this._scrollOffset}`}</Text>
+          <Text>{`DataLength: ${this.props.data.length}`}</Text>
+
         </View>
       </View>
     )
@@ -278,7 +281,7 @@ class RowItem extends PureComponent {
   }
 
   render() {
-    const { isActiveRow, spacerHeight, renderItem, item, index, setRef } = this.props
+    const { isActiveRow, bottomPadding, spacerHeight, renderItem, item, index, setRef } = this.props
     const component = renderItem({ 
       isActive: false, 
       item, 
@@ -296,6 +299,8 @@ class RowItem extends PureComponent {
         }}>
           {component}
         </View>
+        {!!bottomPadding && this.renderSpacer(bottomPadding)}
+
       </View>
     )
   }
