@@ -16,7 +16,7 @@ import {
 import SortableFlatList from './SortableFlatList'
 import SortableListView from './SortableListView'
 
-const initialData = Array.from({ length: 5 }).fill(0).map((d, index) => ({
+const initialData = Array.from({ length: 50 }).fill(0).map((d, index) => ({
   color: `rgb(${Math.floor(Math.random() * 255)}, ${index * 5}, ${132})`,
   label: index,
   key: `data-key${index}`,

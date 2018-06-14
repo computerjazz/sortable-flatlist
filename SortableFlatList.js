@@ -59,9 +59,7 @@ class SortableFlatList extends Component {
       onPanResponderMove: Animated.event([ null, { moveY: this._moveYAnim }], {
         listener: (evt, gestureState) => {
           const { moveY } = gestureState
-          
           this._moveY = moveY
-
         }
       }),
       onPanResponderRelease: () => {
@@ -80,7 +78,8 @@ class SortableFlatList extends Component {
   }
 
   scroll = (scrollAmt) => {
-    const spacerIndex = this.getSpacerIndex(moveY + scrollAmt, activeRow)
+    const { scroll, activeRow } = this.state
+    const spacerIndex = this.getSpacerIndex(this._moveY + scrollAmt, activeRow)
 
     if (!scroll ||   spacerIndex >= this.props.data.length - 2) return
     if (spacerIndex === 0) return this._flatList.scrollToIndex({ index: 0 })
