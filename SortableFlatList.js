@@ -16,15 +16,16 @@ YellowBox.ignoreWarnings(['Warning: isMounted(...) is deprecated'])
 UIManager.setLayoutAnimationEnabledExperimental && UIManager.setLayoutAnimationEnabledExperimental(true);
 
 class SortableFlatList extends Component {
-  _moveY = new Animated.Value(0)
+  _moveYAnim = new Animated.Value(0)
   _offset = new Animated.Value(0)
-  _hoverAnim = Animated.add(this._moveY, this._offset)
+  _hoverAnim = Animated.add(this._moveYAnim, this._offset)
   _spacerIndex = -1
   _pixels = []
   _measurements = []
   _scrollOffset = 0
   _containerHeight
   _containerOffset
+  _moveY = 0
   
   constructor(props) {
     super(props)
@@ -40,44 +41,27 @@ class SortableFlatList extends Component {
     this._panResponder = PanResponder.create({
       onStartShouldSetPanResponderCapture: (evt, gestureState) => {
         this.additionalOffset = evt.nativeEvent.locationY
-        this._moveY.setValue(evt.nativeEvent.pageY)
+        this._moveYAnim.setValue(evt.nativeEvent.pageY)
         this._offset.setValue((this.additionalOffset + this._containerOffset) * -1)
         return false
       },
       onMoveShouldSetPanResponder: (evt, gestureState) => {
         const { activeRow } = this.state 
         const shouldSet = activeRow > -1
-        this._moveY.setValue(gestureState.moveY)
+        this._moveYAnim.setValue(gestureState.moveY)
         if (shouldSet) {
           this.props.onRowActive && this.props.onRowActive(activeRow)
           this.setState({ showHoverComponent: true })
+          this.animate()
         }
         return shouldSet;
       },
-      onPanResponderMove: Animated.event([ null, { moveY: this._moveY }], {
+      onPanResponderMove: Animated.event([ null, { moveY: this._moveYAnim }], {
         listener: (evt, gestureState) => {
-          const { activeRow, scroll } = this.state
           const { moveY } = gestureState
+          
+          this._moveY = moveY
 
-
-          this.setState({ moveY })
-
-
-
-          const hoverItemTopPosition = moveY - this.additionalOffset - this._containerOffset
-          const nextSpacerIndex = this.getSpacerIndex(moveY, activeRow)
-          if (nextSpacerIndex > -1 && nextSpacerIndex !== this._spacerIndex) {
-            this.setState({ spacerIndex: nextSpacerIndex })
-            this._spacerIndex = nextSpacerIndex
-            // scroll if in top or bottom 10%
-            const shouldScrollUp = hoverItemTopPosition < (this._containerHeight * 0.1)
-            const shouldScrollDown = hoverItemTopPosition + this._measurements[activeRow].height > (this._containerHeight * 0.9)
-
-            if (!scroll) {
-              if (shouldScrollUp) this.setState({ scroll: true, moveY }, () => this.scroll(-50))
-              if (shouldScrollDown) this.setState({ scroll: true, moveY }, () => this.scroll(50))
-            } else if (!shouldScrollDown && !shouldScrollUp) this.setState({ scroll: 0 })
-          }
         }
       }),
       onPanResponderRelease: () => {
@@ -96,11 +80,9 @@ class SortableFlatList extends Component {
   }
 
   scroll = (scrollAmt) => {
-    const { scroll, moveY, activeRow } = this.state
     const spacerIndex = this.getSpacerIndex(moveY + scrollAmt, activeRow)
 
-    if (!scroll || 
-      spacerIndex >= this.props.data.length - 2) return
+    if (!scroll ||   spacerIndex >= this.props.data.length - 2) return
     if (spacerIndex === 0) return this._flatList.scrollToIndex({ index: 0 })
     const isScrollingUp = scrollAmt > 0
     const currentScrollOffset = this._scrollOffset
@@ -127,14 +109,27 @@ class SortableFlatList extends Component {
     return sortedData
   }
 
-  componentDidUpdate(prevProps, prevState) {
-    if (
-      prevState.spacerIndex !== this.state.spacerIndex && 
-      this.state.spacerIndex !== -1 && 
-      Platform.OS === 'ios') {
+  animate = () => {
+    if (this.state.activeRow === -1) return
+    const { activeRow, scroll } = this.state
+    const hoverItemTopPosition = this._moveY - this.additionalOffset - this._containerOffset
+    const nextSpacerIndex = this.getSpacerIndex(this._moveY, activeRow)
+    if (nextSpacerIndex > -1 && nextSpacerIndex !== this._spacerIndex) {
       LayoutAnimation.easeInEaseOut()
+      this.setState({ spacerIndex: nextSpacerIndex })
+      this._spacerIndex = nextSpacerIndex
+      // scroll if in top or bottom 10%
+      const shouldScrollUp = hoverItemTopPosition < (this._containerHeight * 0.1)
+      const shouldScrollDown = hoverItemTopPosition + this._measurements[activeRow].height > (this._containerHeight * 0.9)
+
+      if (!scroll) {
+        if (shouldScrollUp) this.setState({ scroll: true, moveY: this._moveY }, () => this.scroll(-50))
+        if (shouldScrollDown) this.setState({ scroll: true, moveY: this._moveY }, () => this.scroll(50))
+      } else if (!shouldScrollDown && !shouldScrollUp) this.setState({ scroll: 0 })
     }
+    requestAnimationFrame(this.animate)
   }
+
 
   getSpacerIndex = (moveY, activeRow) => {
     if (activeRow === -1 || !this._measurements[activeRow]) return -1
