@@ -27,12 +27,12 @@ export default class App extends Component {
     data: initialData,
   }
 
-  renderFlatListItem = ({ item, index, setRef, move, isActive }) => {
+  renderFlatListItem = ({ item, index, move, isActive, moveEnd }) => {
     return (
       <TouchableOpacity
         key={`myItem-${this.state.data[index].key}`}
-        ref={setRef}
         onLongPress={move}
+        onPressOut={moveEnd}
         style={[styles.item, { backgroundColor: item.color }, isActive && styles.active]}>
         <Text style={styles.label}>{item.label}</Text>
       </TouchableOpacity>
@@ -44,8 +44,8 @@ export default class App extends Component {
       <SortableFlatList
         data={this.state.data}
         renderItem={this.renderFlatListItem}
-        onRowActive={(row) => console.log('active!')}
         onMoveEnd={({ data, from, to, row }) => {
+          console.log('MOVE END', from, to, row, data)
           this.setState({ data })
         }}
       />
@@ -57,12 +57,14 @@ export default class App extends Component {
     return (
       <SortableListView
         data={this.state.data.reduce((acc, cur) => {
-          acc[cur.key] = cur
+          acc[cur.key] = { label: cur.label, color: cur.color }
           return acc
         }, {})}
+        activeOpacity={1}
         order={this.state.data.map(d => d.key)}
         renderRow={this.renderListViewItem}
         onRowMoved={this.onListViewItemMoved}
+        activeStyle={styles.active}
       />
     )
   }
@@ -115,14 +117,13 @@ const styles = StyleSheet.create({
 
 class ListViewItem extends Component {
   render() {
-    console.log(this.props)
     const { sortHandlers, item } = this.props
     return (
       <TouchableOpacity 
         {...sortHandlers}
-        style={[styles.item, { backgroundColor: 'blue'}]}
+        style={[styles.item, { backgroundColor: item.color }]}
       >
-        <Text>{item.label}</Text>
+        <Text style={styles.label}>{item.label}</Text>
       </TouchableOpacity>
     )
   }
