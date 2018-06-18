@@ -20,6 +20,7 @@ const initialData = Array.from({ length: 50 }).fill(0).map((d, index) => ({
   color: `rgb(${Math.floor(Math.random() * 255)}, ${index * 5}, ${132})`,
   label: index,
   key: `data-key${index}`,
+  height: 75 + Math.random() * 50
 }))
 
 export default class App extends Component {
@@ -33,7 +34,7 @@ export default class App extends Component {
         key={`myItem-${this.state.data[index].key}`}
         onLongPress={move}
         onPressOut={moveEnd}
-        style={[styles.item, { backgroundColor: item.color }, isActive && styles.active]}>
+        style={[styles.item, { backgroundColor: item.color, height: item.height }, isActive && styles.active]}>
         <Text style={styles.label}>{item.label}</Text>
       </TouchableOpacity>
     )

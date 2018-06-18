@@ -9,6 +9,7 @@ import {
   UIManager,
   Platform,
   Text,
+  StyleSheet,
 } from 'react-native'
 
 // Measure function triggers false positives
@@ -34,7 +35,7 @@ class SortableFlatList extends Component {
   _containerHeight
   _containerOffset
   _moveY = 0
-  _set = false
+  _hasMoved = false
   
   constructor(props) {
     super(props)
@@ -43,6 +44,11 @@ class SortableFlatList extends Component {
         const { pageY, locationY } = evt.nativeEvent
         const tappedRow = this._pixels[Math.floor(this._scrollOffset + pageY)]
         this.additionalOffset = (pageY + this._scrollOffset) - this._measurements[tappedRow].y
+        console.log('additionsl', this.additionalOffset)
+        console.log('tapped', tappedRow )
+        console.log('measurements.y', this._measurements[tappedRow].y )
+        console.log('pageY', pageY)
+        console.log('offset', this._scrollOffset)
         this._moveYAnim.setValue(pageY)
         this._moveY = pageY
         this._offset.setValue((this.additionalOffset + this._containerOffset) * -1)
@@ -56,8 +62,9 @@ class SortableFlatList extends Component {
           this.props.onRowActive && this.props.onRowActive(activeRow)
           this.setState({ showHoverComponent: true })
           this.animate()
-          this._set = true
+          this._hasMoved = true
         }
+        console.log('SHOULDSET', shouldSet)
         return shouldSet;
       },
       onPanResponderMove: Animated.event([ null, { moveY: this._moveYAnim }], {
@@ -68,6 +75,7 @@ class SortableFlatList extends Component {
       }),
       onPanResponderRelease: () => {
         const { activeRow, spacerIndex } = this.state
+        console.log('RELEASE', activeRow)
         const sortedData = this.getSortedList(this.props.data, activeRow, spacerIndex)
         this.props.onMoveEnd && this.props.onMoveEnd({
           row: this.props.data[activeRow],
@@ -77,8 +85,10 @@ class SortableFlatList extends Component {
         })
         this._spacerIndex = -1
         this.setState(initialState)
-        this._set = false
+        this._hasMoved = false
         this._moveY = 0
+        console.log(this._tempMeasurements)
+        this._tempMeasurements = []
       }
     })
     this.state = initialState
@@ -153,16 +163,26 @@ class SortableFlatList extends Component {
     return spacerIndex > activeRow ? spacerIndex + 1 : spacerIndex
   }
 
+  // Keep track of changes in measurements while hovering
+  // but don't apply them until hover ends
+  _tempMeasurements = []
+
   measureItem = (ref, index) => {
-    if (this._measurements[index]) return
-    // console.log('MEAUSSRE?', index, !!ref)
+    const { activeRow } = this.state  
+    // console.log('MEAUSSRE?', index, this.props.data[index], this._measurements[index], !!ref)
     !!ref && setTimeout(() => {
       ref.measureInWindow(((x, y, width, height) => {
-        // console.log('MEASURED', index, y, height )
-        if (!this._measurements[index] && (width || height) && y >= 0) {
-          this._measurements[index] = { x, y, width, height }
-          for (let i = Math.floor(y); i < y + height; i++) {
-            this._pixels[i] = index
+        console.log('MEASURED index:', index, ', y: ', y, ', height: ', height )
+        if ((width || height) && y >= 0) {
+          const ypos = y + this._scrollOffset
+          const rowMeasurements = { y: ypos, height }
+          if (activeRow === -1) {
+            this._measurements[index] = rowMeasurements
+            for (let i = Math.floor(ypos); i < ypos + height; i++) {
+              this._pixels[i] = index
+            }
+          } else {
+            this._tempMeasurements[index] = rowMeasurements
           }
         }
         }))
@@ -170,6 +190,7 @@ class SortableFlatList extends Component {
   }
 
   move = (hoverComponent, index) => {
+    console.log('MOVE!', index)
     this._spacerIndex = index
     this.setState({
       activeRow: index,
@@ -179,7 +200,8 @@ class SortableFlatList extends Component {
   }
 
   moveEnd = () => {
-    if (!this._set) this.setState(initialState)
+    console.log('MOVEEND', this._hasMoved)
+    if (!this._hasMoved) this.setState(initialState)
   }
 
   setRef = index => (ref) => this.measureItem(ref, index)
@@ -210,14 +232,7 @@ class SortableFlatList extends Component {
   renderHoverComponent = () => {
     const { hoverComponent } = this.state
     return !!hoverComponent && (
-      <Animated.View
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          top: this._hoverAnim,
-        }}
-      >
+      <Animated.View style={[styles.hoverComponent, { top: this._hoverAnim }]} >
         {hoverComponent}
       </Animated.View>
     )
@@ -269,7 +284,6 @@ class SortableFlatList extends Component {
           <Text>{`ContainerOffset: ${this._containerOffset}`}</Text>
           <Text>{`ScrollOffset: ${this._scrollOffset}`}</Text>
           <Text>{`DataLength: ${this.props.data.length}`}</Text>
-
         </View>
       </View>
     )
@@ -283,13 +297,13 @@ class RowItem extends PureComponent {
   renderSpacer = (height) => <View style={{ height }} />
 
   move = () => {
-    const { move, moveEnd, renderItem, item, index, setRef } = this.props
+    const { move, moveEnd, renderItem, item, index } = this.props
     const hoverComponent = renderItem({ isActive: true, item, index, move: () => null, moveEnd })
     move(hoverComponent, index)
   }
 
   render() {
-    const { onLayout, moveEnd, isActiveRow, bottomPadding, spacerHeight, renderItem, item, index, setRef } = this.props
+    const { moveEnd, isActiveRow, bottomPadding, spacerHeight, renderItem, item, index, setRef } = this.props
     const component = renderItem({ 
       isActive: false, 
       item, 
@@ -313,3 +327,11 @@ class RowItem extends PureComponent {
     )
   }
 }
+
+const styles = StyleSheet.create({
+  hoverComponent: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+  }
+})
