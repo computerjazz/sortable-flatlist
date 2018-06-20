@@ -7,8 +7,6 @@ import {
   View, 
   PanResponder, 
   UIManager,
-  Platform,
-  Text,
   StyleSheet,
 } from 'react-native'
 
@@ -174,11 +172,8 @@ class SortableFlatList extends Component {
     const { activeRow } = this.state  
     !!ref && setTimeout(() => {
       try {
-
-        ref.measureInWindow(((x, y, width, height) => {
-          // console.log('measured', index, ref, y, height)
-          if (y < 0) return
-          if ((width || height) && activeRow === -1) {
+        this._refs[index].measureInWindow(((x, y, width, height) => {
+          if (y >= 0 && (width || height) && activeRow === -1) {
             const ypos = y + this._scrollOffset
             const rowMeasurements = { y: ypos, height }
             this._measurements[index] = rowMeasurements
@@ -189,10 +184,9 @@ class SortableFlatList extends Component {
         }))
 
       } catch (e) {
-        console.log('## measure error -- index: ', index, ref, e)
-        this.measureItem(this._refs[index], index)
+        console.log('## measure error -- index: ', index, activeRow, ref, e)
       }
-    }, 10)
+    }, 100)
   }
 
   move = (hoverComponent, index) => {
