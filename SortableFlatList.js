@@ -56,6 +56,7 @@ class SortableFlatList extends Component {
         if (shouldSet) {
           this.props.onRowActive && this.props.onRowActive(activeRow)
           this.setState({ showHoverComponent: true })
+          // Kick off recursive row animation
           this.animate()
           this._hasMoved = true
         }
@@ -75,9 +76,12 @@ class SortableFlatList extends Component {
         const lastElementMeasurements = this._measurements[data.length - 1]
         const sortedData = this.getSortedList(this.props.data, activeRow, spacerIndex)
 
-        // If user flings row up and lets go in the middle of an animation
-        // measurements can error out. Give layout animations some time to complete
-        // and animate element into place before calling onMoveEnd
+        // If user flings row up and lets go in the middle of an animation measurements can error out. 
+        // Give layout animations some time to complete and animate element into place before calling onMoveEnd
+       
+        // Spacers have different positioning depending on whether the spacer row is before or after the active row.
+        // This is because the active row animates to height 0, so everything after it shifts upwards, but everything before
+        // it shifts downward
         const isAfterActive = spacerIndex > activeRow
         const isLastElement = spacerIndex >= data.length
         const spacerElement = isLastElement ? lastElementMeasurements : spacerMeasurements
@@ -99,21 +103,10 @@ class SortableFlatList extends Component {
             to: spacerIndex,
             data: sortedData,
           })
-
         }))
       }
     })
     this.state = initialState
-  }
-
-  scroll = (scrollAmt, spacerIndex) => {
-    if (spacerIndex >= this.props.data.length - 2) return
-    if (spacerIndex === 0) return this._flatList.scrollToIndex({ index: 0 })
-    const isScrollingUp = scrollAmt > 0
-    const currentScrollOffset = this._scrollOffset
-    const newOffset = currentScrollOffset + scrollAmt
-    const offset = isScrollingUp ? Math.max(0, newOffset) : newOffset
-    this._flatList.scrollToOffset({ offset, animated: false })
   }
 
   getSortedList = (data, activeRow, spacerIndex) => {
@@ -133,27 +126,38 @@ class SortableFlatList extends Component {
   animate = () => {
     const { activeRow } = this.state
     if (activeRow === -1) return
-    const hoverItemTopPosition = this._moveY - (this._additionalOffset + this._containerOffset)
-    const hoverItemBottomPosition = hoverItemTopPosition + this._measurements[activeRow].height
     const nextSpacerIndex = this.getSpacerIndex(this._moveY, activeRow)
     if (nextSpacerIndex > -1 && nextSpacerIndex !== this._spacerIndex) {
       LayoutAnimation.easeInEaseOut()
       this.setState({ spacerIndex: nextSpacerIndex })
       this._spacerIndex = nextSpacerIndex
     }
-    // scroll if in top or bottom 5%
+    
+    // Scroll if hovering in top or bottom 5%
+    const hoverItemTopPosition = this._moveY - (this._additionalOffset + this._containerOffset)
+    const hoverItemBottomPosition = hoverItemTopPosition + this._measurements[activeRow].height
     const shouldScrollUp = hoverItemTopPosition < (this._containerHeight * 0.05)
     const shouldScrollDown = hoverItemBottomPosition > (this._containerHeight * 0.95)
-
     if (shouldScrollUp) this.scroll(-5, nextSpacerIndex)
     else if (shouldScrollDown) this.scroll(5, nextSpacerIndex)
+
     requestAnimationFrame(this.animate)
+  }
+
+  scroll = (scrollAmt, spacerIndex) => {
+    if (spacerIndex >= this.props.data.length - 2) return
+    if (spacerIndex === 0) return this._flatList.scrollToIndex({ index: 0 })
+    const isScrollingUp = scrollAmt > 0
+    const currentScrollOffset = this._scrollOffset
+    const newOffset = currentScrollOffset + scrollAmt
+    const offset = isScrollingUp ? Math.max(0, newOffset) : newOffset
+    this._flatList.scrollToOffset({ offset, animated: false })
   }
 
 
   getSpacerIndex = (moveY, activeRow) => {
     if (activeRow === -1 || !this._measurements[activeRow]) return -1
-    // find the row that contains the midpoint of the hovering item
+    // Find the row that contains the midpoint of the hovering item
     const hoverItemHeight = this._measurements[activeRow].height
     const hoverItemMidpoint = moveY - this._additionalOffset + hoverItemHeight / 2
     const hoverY = Math.floor(hoverItemMidpoint + this._scrollOffset)
@@ -164,14 +168,17 @@ class SortableFlatList extends Component {
         return hoverY > y && hoverY < (y + height)
       })
     }
+    // Spacer index differs according to placement. See note in onPanResponderRelease
     return spacerIndex > activeRow ? spacerIndex + 1 : spacerIndex
   }
 
   measureItem = (ref, index) => {
     this._refs[index] = ref
     const { activeRow } = this.state  
+    // setTimeout required or else dimensions reported as 0
     !!ref && setTimeout(() => {
       try {
+        // Using stashed ref prevents measuring an unmounted componenet, which throws an error
         this._refs[index].measureInWindow(((x, y, width, height) => {
           if (y >= 0 && (width || height) && activeRow === -1) {
             const ypos = y + this._scrollOffset
@@ -238,6 +245,7 @@ class SortableFlatList extends Component {
 
   measureContainer = ref => {
     if (ref && this._containerOffset === undefined) {
+      // setTimeout required or else dimensions reported as 0
       setTimeout(() => {
         ref.measure((x, y, width, height, pageX, pageY) => {
           this._containerOffset = pageY
@@ -253,7 +261,7 @@ class SortableFlatList extends Component {
       onLayout={e => console.log('layout', e.nativeEvent)}
       ref={this.measureContainer}
         {...this._panResponder.panHandlers}
-        style={{ flex: 1, opacity: 1 }}
+        style={{ flex: 1, opacity: 1 }} // Setting { opacity: 1 } fixes Android measurement bug: https://github.com/facebook/react-native/issues/18034#issuecomment-368417691
       >
         <FlatList
          scrollEnabled={this.state.activeRow === -1}
@@ -292,7 +300,8 @@ class RowItem extends PureComponent {
       move: this.move,
       moveEnd,
     })
-    
+
+    // Rendering the final row requires padding to be applied at the bottom
     return (
       <View ref={setRef(index)} style={{ opacity: 1 }}>
       {!!spacerHeight && this.renderSpacer(spacerHeight)}
